@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'app-python:1.0.0'
+        DOCKER_REPO = 'daiya11'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/daiya-11/jenkins-testing.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                pip install --upgrade pip
+                pip install -r src/requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                pip install pytest
+                pytest src/tests/
+                '''
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $DOCKER_REPO/$IMAGE_NAME -t $DOCKER_REPO/app-python:latest .
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withDockerRegistry([credentialsId: 'docker-hub-credentials', url: '']) {
+                    sh '''
+                    docker push $DOCKER_REPO/$IMAGE_NAME
+                    docker push $DOCKER_REPO/app-python:latest
+                    '''
+                }
+            }
+        }
+    }
+}
